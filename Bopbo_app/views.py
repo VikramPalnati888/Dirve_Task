@@ -1,5 +1,4 @@
 from django.shortcuts import render,get_object_or_404,HttpResponseRedirect
-from django.core.files.storage import FileSystemStorage
 from django.shortcuts import redirect
 from django.views.decorators.csrf import csrf_protect
 from django.contrib import messages
@@ -7,15 +6,13 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from googleapiclient.http import MediaFileUpload
 from googleapiclient.discovery import build
-from httplib2 import Http
 from oauth2client import file, client, tools
-from pydrive.auth import GoogleAuth
-from pydrive.drive import GoogleDrive
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
+from django.conf import settings
+import json
+import requests
 import os
-from urllib.request import urlopen
-from django.core.files.storage import FileSystemStorage
-
-
 
 def sheet(request):
 	if request.method == "POST":
@@ -25,6 +22,7 @@ def sheet(request):
 				 'https://www.googleapis.com/auth/drive.file',
 				 'https://www.googleapis.com/auth/drive.appdata',
 				 'https://www.googleapis.com/auth/drive.apps.readonly']
+		
 		creds = ServiceAccountCredentials.from_json_keyfile_name('client_secret.json', scope)
 		client = gspread.authorize(creds)
 
@@ -33,39 +31,33 @@ def sheet(request):
 		# Make sure you use the right name here.
 		sheet = client.open("task-drive@task-292517.iam.gserviceaccount.com").sheet1
 
-
 		Name = request.POST['name']
 		Email = request.POST['email']
 		Mobile_No = request.POST['mobileno']
 		Messages = request.POST['message']
-		Attachment_File = request.FILES['filename']
-
-		# fs = FileSystemStorage(location='static\\media\\files\\')
-		# print(fs,'Pppppp')
-		# filename = fs.save(Attachment_File.name, Attachment_File)
-		# file_url = fs.path(filename)
-		# print(type(file_url),"lllllll")
-
-		# file_name = file_url.split('\\')
-		# print(file_name,"filename")
+		Attachment_File = request.FILES.getlist("filename")
 
 		#here form data storing like name, email, mobile_no, message
 		row = [Name, Email, Mobile_No,	Messages]
 		index = 2
 		sheet.insert_row(row, index)
-
-		# folder_id = '1YHJvfup29RIQ5lbttGu8BjBwQBOoVCew'
-		# mime_type = ['image/jpeg','image/png','application/vnd.ms-excel','application/pdf','application/msword']
-
-		file_metadata = {
-				'name':file_url,
-				'parents':[folder_id],
-		}
-
-		# media =  MediaFileUpload(file_url,mimetype=mime_type)
-		# file = service.files().create(body=file_metadata,
-		# 						media_body=media,
-		# 						fields='id').execute()
-
-
-	return render(request, 'contactus.html', messages.success(request, 'Thank you for submission form'))
+		for filename in Attachment_File:
+			#file uploading code
+			path = default_storage.save(filename.name, ContentFile(filename.read()))
+			headers = {"Authorization": "Bearer ## enter user access_token ##"}
+			para = {
+			    "name": filename.name,
+			    "parents": [folder_id]
+			}
+			files = {
+			    'data': ('metadata', json.dumps(para), 'application/json; charset=UTF-8'),
+			    'file': open(os.path.join(settings.MEDIA_ROOT, path), "rb")
+			}
+			r = requests.post(
+			    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
+			    headers=headers,
+			    files=files
+			)
+			# print(r.text)
+		messages.success(request, 'Thank you for submission form')
+	return render(request, 'contactus.html', {"Messages":"data not stored"})

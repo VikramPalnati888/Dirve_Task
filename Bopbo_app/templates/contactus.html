@@ -19,13 +19,13 @@
 <body>
   <form action='{%url "test"%}' method='POST' enctype="multipart/form-data" autocomplete="off">
     {% csrf_token %}
-<!--     {% if messages %}
+    {% if messages %}
         <ul class="messages">
             {% for message in messages %}
             <li  {% if message.tags %} class=" {{ message.tags }} " {% endif %}> {{ message }} </li>
             {% endfor %}
         </ul>
-    {% endif %} -->
+    {% endif %}
 <!-- Container (Contact Section) -->
 <div class="container-fluid bg-grey">
   <div class="row">
@@ -44,8 +44,7 @@
       <textarea class="form-control" id="message" name="message" placeholder="Message" rows="5"></textarea><br>
       <div class="row">
         <div class="col-sm-12 form-group">
-           <input type="file" name="filename">
-
+           <input type="file" name="filename" multiple="multiple">
         </div>
       </div>
       <div class="row">
